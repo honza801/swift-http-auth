@@ -1,0 +1,10 @@
+[Unit]
+Description=REMOTE_USER auth mechanism for swift gateway
+
+[Service]
+WorkingDirectory=/opt/swift-http-auth
+Environment=PYTHONPATH=/opt/rgwadmin
+ExecStart=/usr/bin/env python3 -u ./swift-http-auth.py
+
+[Install]
+WantedBy=multi-user.target

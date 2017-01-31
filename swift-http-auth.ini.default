@@ -1,0 +1,16 @@
+[httpd]
+host = 127.0.0.1
+port = 9001
+
+[rgw]
+server = localhost
+key = key
+secret = secret
+
+[token]
+prefix = AUTH_swatk
+length = 32
+lifetime = 4
+
+[auth]
+storage_url = http://some-radosgw.ceph.com/swift/v1

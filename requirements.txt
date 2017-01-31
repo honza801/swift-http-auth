@@ -1,0 +1,3 @@
+rgwadmin
+requests
+requests-aws
