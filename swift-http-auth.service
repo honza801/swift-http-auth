@@ -7,4 +7,5 @@ Environment=PYTHONPATH=/opt/rgwadmin
 ExecStart=/usr/bin/env python3 -u ./swift-http-auth.py
 
 [Install]
+Alias=swift-http-auth
 WantedBy=multi-user.target
