@@ -7,10 +7,12 @@ server = localhost
 key = key
 secret = secret
 
-[token]
+[tokenizer]
 prefix = AUTH_swatk
 length = 32
 lifetime = 4
+admin_realms = ADMIN.COM
 
 [auth]
 storage_url = http://some-radosgw.ceph.com/swift/v1
+account_in_url = yes
