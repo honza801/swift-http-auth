@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import http.server
+from socketserver import ThreadingMixIn
 import configparser
 from datetime import datetime, timedelta
 import random
@@ -70,10 +71,16 @@ class Tokenizer(object):
             groups.append('.reseller_admin')
         self.log.debug('Auth groups %s' % groups)
         return groups
-
-    def get_or_create(self, remote_user):
+    
+    def get_valid_token(self, remote_user):
         token = self.tokens.get(remote_user)
         if not (token and token.valid()):
+            return False
+        return token
+    
+    def get_or_create(self, remote_user):
+        token = self.get_valid_token(remote_user)
+        if not token:
             token = self._new(remote_user)
         self.log.debug('Tokenizer get token for %s' % remote_user)
         return token
@@ -166,13 +173,13 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
         else:
             log = logging.getLogger(__main__)
 
-    def get_storage_url(self, user_id=''):
+    def get_storage_url(self, token):
         storage_url = auth_config['storage_url']
+        user_id = token.get_userid()
         if auth_config.getboolean('account_in_url'):
-            if storage_url.endswith('/'):
-                storage_url += 'AUTH_%s' % user_id
-            else:
-                storage_url += '/AUTH_%s' % user_id
+            if not storage_url.endswith('/'):
+                storage_url += '/'
+            storage_url += 'AUTH_%s' % user_id
         log.debug('Storage url for %s is %s' % (user_id, storage_url))
         return storage_url
 
@@ -189,11 +196,12 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
         if not remote_user:
             return self.forbidden()
         log.debug('Handle authenticated user %s' % remote_user)
-        token = tokenizer.get_or_create(remote_user)
-        user_id = token.get_userid()
-        rgw.touch_user(user_id)
+        token = tokenizer.get_valid_token(remote_user)
+        if not token:
+            token = tokenizer.get_or_create(remote_user)
+            rgw.touch_user(token.get_userid())
         self.send_response(return_code)
-        self.send_header("X-Storage-Url", self.get_storage_url(user_id))
+        self.send_header("X-Storage-Url", self.get_storage_url(token))
         self.send_header("X-Auth-Token", token)
         self.send_header("X-Storage-Token", token)
         self.end_headers()
@@ -225,6 +233,9 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
             log.debug('Forbidden %s' % self.path)
             self.forbidden()
 
+class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
+    pass
+
 if __name__ == '__main__':
     #logging.basicConfig(level=logging.DEBUG)
     log = logging.getLogger(__name__)
@@ -236,7 +247,7 @@ if __name__ == '__main__':
     tokenizer = Tokenizer(config['tokenizer'], log)
     httpd_config = (config['httpd']['host'], config.getint('httpd', 'port'))
 
-    httpd = http.server.HTTPServer(httpd_config, AuthHandler)
+    httpd = ThreadedHTTPServer(httpd_config, AuthHandler)
     httpd.RequestHandlerClass.set_logger(log)
     httpd.RequestHandlerClass.set_config(config['auth'])
     httpd.RequestHandlerClass.set_tokenizer(tokenizer)
