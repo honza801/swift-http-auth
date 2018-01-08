@@ -31,10 +31,16 @@ class Token(object):
 
     def get_userid(self):
         user_id = self.user.split('@')[0]
+        if '/' in user_id:
+            user_id = user_id.split('/')[1]
+        user_id = user_id.replace('.', '_')
         return user_id
     
     def get_user_realm(self):
-        realm = self.user.split('@')[1]
+        if '@' in self.user:
+            realm = self.user.split('@')[1]
+        else:
+            realm = ''
         return realm
    
     def __str__(self):
@@ -60,7 +66,7 @@ class Tokenizer(object):
         user_realm = new_token.get_user_realm()
         new_token.groups = self._get_auth_groups(user_id, user_id, user_realm)
         self.tokens[remote_user] = new_token
-        self.log.debug('New token %s for %s' % (new_token, remote_user))
+        self.log.info('New token %s for %s' % (new_token, remote_user))
         return new_token
     
     def _get_auth_groups(self, tenant, user_id, realm):
@@ -91,7 +97,7 @@ class Tokenizer(object):
                 token = self.tokens[remote_user]
                 self.log.debug('Token %s found, issued for %s with groups: %s' % (token, remote_user, token.groups))
                 return token
-        self.log.debug('Token does not exist %s' % token_str)
+        self.log.info('Token does not exist %s' % token_str)
         return False
 
 class RadosGWAdminLocal:
@@ -148,7 +154,7 @@ class RadosGWAdminLocal:
             self.get_user_info(user_id, user_id)
             log.debug('User %s found' % user_id)
         except Exception:
-            log.debug('Creating user %s' % user_id)
+            log.info('Creating user %s' % user_id)
             self.create_user(uid=user_id, display_name=user_id, tenant=user_id)
             subuser = "%s:swift" % user_id
             self.create_subuser(uid=user_id,
@@ -237,7 +243,7 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
     pass
 
 if __name__ == '__main__':
-    #logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     log = logging.getLogger(__name__)
 
     config = configparser.ConfigParser()
