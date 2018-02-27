@@ -33,7 +33,7 @@ class Token(object):
         user_id = self.user.split('@')[0]
         if '/' in user_id:
             user_id = user_id.split('/')[1]
-        user_id = user_id.replace('.', '_')
+        user_id = user_id.translate(str.maketrans('.-', '__'))
         return user_id
     
     def get_user_realm(self):
